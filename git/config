@@ -1,0 +1,63 @@
+# Included into ~/.gitconfig by install.sh via `include.path`.
+#
+# Identity is deliberately absent: it belongs in ~/.gitconfig per machine, which
+# is read after this file and therefore wins.
+
+[init]
+	defaultBranch = main
+
+[pull]
+	# Never create a merge commit on pull. A pull that cannot fast-forward means
+	# the branch diverged, which is a thing to look at rather than paper over.
+	ff = only
+
+[push]
+	default = current
+	# Create the upstream on first push instead of erroring with the long hint.
+	autoSetupRemote = true
+
+[fetch]
+	prune = true
+	pruneTags = true
+
+[branch]
+	sort = -committerdate
+
+[diff]
+	# Detect moved-and-modified code as a rename rather than a delete plus an add.
+	renames = copies
+	algorithm = histogram
+	colorMoved = zebra
+
+[merge]
+	conflictStyle = zdiff3
+
+[rerere]
+	# Remember conflict resolutions and replay them. Pays for itself the first time
+	# a long-lived branch rebases twice.
+	enabled = true
+	autoUpdate = true
+
+[rebase]
+	autoSquash = true
+	autoStash = true
+
+[log]
+	date = iso
+
+[core]
+	autocrlf = input
+
+[help]
+	# Suggest the intended command instead of running it — autocorrect that
+	# executes is how a typo becomes a destructive command.
+	autocorrect = prompt
+
+[alias]
+	# Deliberately few: shell aliases in shell/git.sh cover the everyday verbs, and
+	# two names for one thing is worse than either. These are the ones that need
+	# git's own argument handling.
+	unstage = restore --staged
+	last = log -1 --stat
+	amend = commit --amend --no-edit
+	wip = "!git add -A && git commit -m 'wip: checkpoint'"
