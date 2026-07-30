@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Entry point. One line in ~/.bashrc sources this:
 #
 #   [ -f "$HOME/workspace/dotfiles/shell/index.sh" ] && . "$HOME/workspace/dotfiles/shell/index.sh"
@@ -7,7 +8,8 @@
 
 _DOTFILES_SHELL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-for _f in general git; do
+for _f in general node git; do
+  # shellcheck source=/dev/null
   [ -f "$_DOTFILES_SHELL/$_f.sh" ] && . "$_DOTFILES_SHELL/$_f.sh"
 done
 unset _f

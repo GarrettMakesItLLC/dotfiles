@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Git aliases and branch-switching helpers.
 # Sourced by shell/index.sh — not meant to be run directly.
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Navigation, listing, and the handful of everyday shortcuts.
 # Sourced by shell/index.sh — not meant to be run directly.
 

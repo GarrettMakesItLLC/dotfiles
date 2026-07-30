@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Every file here is sourced into every interactive shell on every machine, and
+  # a broken one arrives via `git pull` with no PR in between. shellcheck is the
+  # only thing standing between a typo and a shell that will not start.
+  shell:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # Ubuntu runners ship shellcheck, so there is nothing to install.
+      - name: Lint
+        run: shellcheck -S warning bootstrap/device.sh install.sh shell/*.sh
+
+      # Syntax-only parse of every shell file, including any not named above —
+      # a new file added to shell/ without updating the lint list would otherwise
+      # ship unchecked.
+      - name: Parse every shell file
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "::error file=$f::syntax error"; fail=1; }
+          done < <(git ls-files '*.sh')
+          exit "$fail"
+
+      # `device.sh` is the file a new machine runs first, so a broken argument
+      # parser is the worst possible failure. --help touches nothing.
+      - name: device.sh --help runs
+        run: bash bootstrap/device.sh --help
+
+      # The manifest is data the script trusts. A stray space instead of a tab
+      # silently drops a repo from the fleet, which is invisible until someone
+      # wonders why a checkout is missing.
+      - name: Manifest is tab-separated and complete
+        run: |
+          fail=0
+          n=0
+          while IFS= read -r line; do
+            case "$line" in ''|\#*) continue ;; esac
+            n=$((n + 1))
+            fields=$(awk -F'\t' '{print NF}' <<<"$line")
+            if [ "$fields" -ne 4 ]; then
+              echo "::error::expected 4 tab-separated fields, got $fields: $line"
+              fail=1
+            fi
+          done < bootstrap/repos.tsv
+          [ "$n" -eq 0 ] && { echo "::error::manifest has no entries"; fail=1; }
+          echo "$n repos in the manifest"
+          exit "$fail"
+
+  ci-success:
+    name: CI Success
+    if: always() && github.event_name == 'pull_request'
+    needs: [shell]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify no required job failed or was skipped
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          bad=$(jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"' <<<"$RESULTS")
+          if [ -n "$bad" ]; then
+            echo "::error::$bad"
+            exit 1
+          fi
+          echo "All required jobs succeeded."

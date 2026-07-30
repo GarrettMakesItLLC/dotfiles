@@ -1,0 +1,26 @@
+# The repo fleet. Data, not code — adding a repo is one line here, never a script edit.
+#
+# repo            role       pm     bootstrap
+#
+#   role       product | infra | archive — `archive` is cloned only with --all
+#   pm         npm | pnpm | none  — none means nothing to install
+#   bootstrap  extra command run in the repo after install, or `-`
+#
+# Tabs between fields. Lines starting with # and blank lines are ignored.
+
+MuscleBuddy	product	npm	npx prisma generate
+RedThreadEvents	product	npm	npx prisma generate
+AdventureOS	product	pnpm	pnpm db:generate
+NetWorthy	product	npm	-
+GarrettMakesIt	product	npm	-
+
+ci	infra	none	-
+dotfiles	infra	none	-
+.github	infra	none	-
+
+# Retained for reference, not active work. QuantaForge is NetWorthy's prior art
+# (see NetWorthy/docs/reference/quantaforge-prior-art.md); OverlandOS is
+# AdventureOS's predecessor.
+QuantaForge	archive	none	-
+OverlandOS	archive	npm	-
+ReptIdle	archive	none	-

@@ -6,25 +6,63 @@ Sibling to [`dotclaude`](https://github.com/GarrettMakesItLLC/dotclaude), which 
 the agent surface. Same reasoning: the config is the same on every machine, so it lives in one place
 and each machine points at it.
 
-## Install
+## New machine, from nothing
+
+This is the only repo you have to clone by hand. It fetches everything else.
 
 ```bash
 git clone git@github.com:GarrettMakesItLLC/dotfiles.git ~/workspace/dotfiles
+bash ~/workspace/dotfiles/bootstrap/device.sh
+```
+
+That installs the toolchain, wires the shell and git config, clones `dotclaude` and runs its
+`bootstrap.sh` to link `~/.claude`, clones the repo fleet into `~/workspace`, and installs each
+repo's dependencies. Idempotent — re-run it any time; it never overwrites an existing checkout.
+
+It ends by printing what it could not do, because those things are interactive or per-machine:
+secrets, MCP connector OAuth, and deployment env vars. Anything needing `sudo` is **reported, never
+installed** — a bootstrap script that silently escalates is one nobody can read before running.
+
+```bash
+bash bootstrap/device.sh --no-install     # clone and link only; skip dependency installs
+bash bootstrap/device.sh --only NetWorthy # one repo
+bash bootstrap/device.sh --all            # include archived repos
+```
+
+Exit status is non-zero when something blocking is missing, so it can gate a larger script.
+
+### Shell and git config only
+
+```bash
 ~/workspace/dotfiles/install.sh
 ```
 
-Idempotent — re-run it after a pull. It appends one source line to `~/.bashrc` and adds an
-`include.path` to `~/.gitconfig`, so a `git pull` here updates every machine with no re-install.
+Appends one source line to `~/.bashrc` and an `include.path` to `~/.gitconfig`, so a `git pull` here
+updates every machine with no re-install.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
+| `bootstrap/device.sh` | Whole-machine setup. Toolchain, agent config, repo fleet, dependencies. |
+| `bootstrap/repos.tsv` | The repo fleet as data. Adding a repo is one line here, never a script edit. |
 | `shell/index.sh` | Entry point. Sources everything else — add a file here, not to `~/.bashrc`. |
 | `shell/general.sh` | Listing, navigation, `repo`, `mkcd`, safety prompts on `rm`/`mv`/`cp`. |
+| `shell/node.sh` | nvm, and npm's global bin on PATH. |
 | `shell/git.sh` | Git verbs, `main`/`dev` branch switching, worktree helpers, `gclean`. |
 | `git/config` | Included into `~/.gitconfig`. No identity — that stays per machine. |
-| `install.sh` | Wires both into the current machine. |
+| `install.sh` | Wires shell and git into the current machine. |
+
+## Why `shell/node.sh` exists
+
+`npm i -g <tool>` installs into `$(npm prefix -g)/bin`, which is not necessarily on `PATH`. When it
+isn't, the install succeeds and the command still does not exist — which reads as a broken install
+and gets worked around instead of fixed.
+
+That was the state on the WSL box: only `node` and `npm` were symlinked into `~/.local/bin` by hand,
+leaving `pnpm`, `corepack`, `shellcheck`, and `vercel` installed but unreachable. `node.sh` derives
+the directory from `npm prefix -g` rather than hardcoding it, so a node upgrade does not silently
+stop resolving.
 
 ## The ones worth knowing
 
