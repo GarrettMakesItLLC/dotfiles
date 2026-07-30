@@ -14,6 +14,8 @@
 [push]
 	default = current
 	# Create the upstream on first push instead of erroring with the long hint.
+	# Needs git >= 2.37; older versions ignore an unknown key silently, so this is
+	# inert rather than broken on them.
 	autoSetupRemote = true
 
 [fetch]
@@ -30,7 +32,11 @@
 	colorMoved = zebra
 
 [merge]
-	conflictStyle = zdiff3
+	# `zdiff3` is better — it hoists the common lines out of the conflict — but it
+	# needs git >= 2.35 and an unsupported VALUE is fatal, not ignored: on 2.34
+	# every `git switch` dies with "unknown style". An unknown *key* is safe to
+	# set ahead of support; an unknown *value* is not.
+	conflictStyle = diff3
 
 [rerere]
 	# Remember conflict resolutions and replay them. Pays for itself the first time
@@ -50,7 +56,8 @@
 
 [help]
 	# Suggest the intended command instead of running it — autocorrect that
-	# executes is how a typo becomes a destructive command.
+	# executes is how a typo becomes a destructive command. Needs git >= 2.38;
+	# older versions fall back to no autocorrect, which is the safe direction.
 	autocorrect = prompt
 
 [alias]
