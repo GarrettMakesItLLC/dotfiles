@@ -1,26 +1,30 @@
 # The repo fleet. Data, not code — adding a repo is one line here, never a script edit.
 #
-# repo            role       pm     bootstrap
+# owner/repo        role       pm     bootstrap
 #
-#   role       product | infra | archive — `archive` is cloned only with --all
-#   pm         npm | pnpm | none  — none means nothing to install
-#   bootstrap  extra command run in the repo after install, or `-`
+#   owner/repo  full slug. Most live under GarrettMakesItLLC, but not all — the
+#               marketing site is under the GarrettMakesIt org, and assuming one
+#               owner is how device.sh silently fails to clone it.
+#   role        product | infra | archive — `archive` is cloned only with --all
+#   pm          npm | pnpm | none  — none means nothing to install
+#   bootstrap   extra command run in the repo after install, or `-`
 #
-# Tabs between fields. Lines starting with # and blank lines are ignored.
+# Tabs between fields. Lines starting with # and blank lines are ignored. The
+# local directory is named after the repo, without the owner.
 
-MuscleBuddy	product	npm	npx prisma generate
-RedThreadEvents	product	npm	npx prisma generate
-AdventureOS	product	pnpm	pnpm db:generate
-NetWorthy	product	npm	-
-GarrettMakesIt	product	npm	-
+GarrettMakesItLLC/MuscleBuddy	product	npm	npx prisma generate
+GarrettMakesItLLC/RedThreadEvents	product	npm	npx prisma generate
+GarrettMakesItLLC/AdventureOS	product	pnpm	pnpm db:generate
+GarrettMakesItLLC/NetWorthy	product	npm	-
+GarrettMakesIt/GarrettMakesIt	product	npm	-
 
-ci	infra	none	-
-dotfiles	infra	none	-
-.github	infra	none	-
+GarrettMakesItLLC/ci	infra	none	-
+GarrettMakesItLLC/dotfiles	infra	none	-
+GarrettMakesItLLC/.github	infra	none	-
 
 # Retained for reference, not active work. QuantaForge is NetWorthy's prior art
 # (see NetWorthy/docs/reference/quantaforge-prior-art.md); OverlandOS is
 # AdventureOS's predecessor.
-QuantaForge	archive	none	-
-OverlandOS	archive	npm	-
-ReptIdle	archive	none	-
+GarrettMakesItLLC/QuantaForge	archive	none	-
+GarrettMakesItLLC/OverlandOS	archive	npm	-
+GarrettMakesItLLC/ReptIdle	archive	none	-

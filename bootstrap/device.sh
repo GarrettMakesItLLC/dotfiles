@@ -14,7 +14,10 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
-ORG=GarrettMakesItLLC
+# Only for dotclaude, which is not in the manifest — it is a prerequisite of the
+# manifest step rather than a member of the fleet. Every other repo carries its
+# own owner in repos.tsv, because they are not all under one org.
+DOTCLAUDE_SLUG=GarrettMakesItLLC/dotclaude
 MANIFEST="$HERE/repos.tsv"
 
 NODE_MAJOR=20
@@ -88,6 +91,22 @@ else
   MISSING+=("node $NODE_MAJOR")
 fi
 
+# Put npm's global bin on PATH for the rest of this script.
+#
+# Without it, `npm i -g <tool>` below "succeeds" and the tool is still not
+# invocable, so a verification like `pnpm -v` fails while the install's exit code
+# says everything is fine. That is how this script reported `ok pnpm` with an empty
+# version. `shell/node.sh` does the same thing for interactive shells; this script
+# cannot rely on that having been sourced yet.
+if command -v npm >/dev/null 2>&1; then
+  _npm_bin="$(npm prefix -g 2>/dev/null)/bin"
+  case ":$PATH:" in
+    *":$_npm_bin:"*) : ;;
+    *) [ -d "$_npm_bin" ] && PATH="$_npm_bin:$PATH" && export PATH ;;
+  esac
+  unset _npm_bin
+fi
+
 # npm is pinned: an npm-11 lockfile passes CI and is then rejected by the deploy.
 if command -v npm >/dev/null 2>&1; then
   if [ "$(npm -v)" = "$NPM_VERSION" ]; then
@@ -108,8 +127,14 @@ elif command -v corepack >/dev/null 2>&1 && corepack enable pnpm >/dev/null 2>&1
   ok "pnpm enabled via corepack"
 elif command -v npm >/dev/null 2>&1; then
   work "installing pnpm"
-  npm i -g pnpm >/dev/null 2>&1 && ok "pnpm $(pnpm -v)" \
-    || { bad "pnpm — needed by AdventureOS"; MISSING+=("pnpm (npm i -g pnpm)"); }
+  # Verify by invoking it, not by trusting the installer's exit code — the two
+  # disagree whenever the global bin is not on PATH.
+  if npm i -g pnpm >/dev/null 2>&1 && hash -r 2>/dev/null; command -v pnpm >/dev/null 2>&1; then
+    ok "pnpm $(pnpm -v)"
+  else
+    bad "pnpm installed but not on PATH — open a new shell, or check \`npm prefix -g\`/bin"
+    MISSING+=("pnpm on PATH (installed to $(npm prefix -g 2>/dev/null)/bin)")
+  fi
 else
   bad "pnpm — needed by AdventureOS"
   MISSING+=("pnpm (npm i -g pnpm)")
@@ -146,8 +171,8 @@ if [ -d "$HOME/dotclaude/.git" ]; then
   ok "dotclaude present"
 else
   work "cloning dotclaude"
-  git clone -q "git@github.com:$ORG/dotclaude.git" "$HOME/dotclaude" \
-    && ok "cloned" || bad "clone failed — check SSH access to $ORG"
+  git clone -q "git@github.com:$DOTCLAUDE_SLUG.git" "$HOME/dotclaude" \
+    && ok "cloned" || bad "clone failed — check SSH access to $DOTCLAUDE_SLUG"
 fi
 if [ -f "$HOME/dotclaude/bootstrap.sh" ]; then
   bash "$HOME/dotclaude/bootstrap.sh" 2>&1 | tail -20 | sed 's/^/  /'
@@ -167,18 +192,21 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 # Field-split on tabs; skip comments and blanks.
-while IFS=$'\t' read -r name role pm boot; do
-  case "${name:-}" in ''|\#*) continue ;; esac
-  [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
+while IFS=$'\t' read -r slug role pm boot; do
+  case "${slug:-}" in ''|\#*) continue ;; esac
+  # The manifest carries owner/repo because not every repo is under one org.
+  # The local directory is named after the repo alone.
+  name="${slug##*/}"
+  [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && [ "$ONLY" != "$slug" ] && continue
   [ "$role" = archive ] && [ "$INCLUDE_ARCHIVES" -eq 0 ] && { skip "$name (archive)"; continue; }
 
   dir="$WORKSPACE/$name"
   if [ -d "$dir/.git" ]; then
     ok "$name present"
   else
-    work "cloning $name"
-    git clone -q "git@github.com:$ORG/$name.git" "$dir" \
-      && ok "$name cloned" || { bad "$name clone failed"; continue; }
+    work "cloning $slug"
+    git clone -q "git@github.com:$slug.git" "$dir" \
+      && ok "$name cloned" || { bad "$slug clone failed"; continue; }
   fi
 
   # Put the checkout on the repo's default branch, current.

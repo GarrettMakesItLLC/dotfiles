@@ -8,7 +8,7 @@
 
 _DOTFILES_SHELL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-for _f in general node git; do
+for _f in general node git secrets; do
   # shellcheck source=/dev/null
   [ -f "$_DOTFILES_SHELL/$_f.sh" ] && . "$_DOTFILES_SHELL/$_f.sh"
 done
