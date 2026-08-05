@@ -5,7 +5,11 @@
 #   owner/repo  full slug. Most live under GarrettMakesItLLC, but not all — the
 #               marketing site is under the GarrettMakesIt org, and assuming one
 #               owner is how device.sh silently fails to clone it.
-#   role        product | infra | archive — `archive` is cloned only with --all
+#   role        product | infra | archive — `archive` is cloned only with --all.
+#               Also the clone location: `product` is the daily-work fleet and
+#               stays flat at $WORKSPACE/<name>; `infra` and `archive` group
+#               under $WORKSPACE/Tools/<name> so the root isn't cluttered with
+#               repos nobody opens day to day.
 #   pm          npm | pnpm | none  — none means nothing to install
 #   bootstrap   extra command run in the repo after install, or `-`
 #
@@ -21,10 +25,7 @@ GarrettMakesIt/GarrettMakesIt	product	npm	-
 GarrettMakesItLLC/ci	infra	none	-
 GarrettMakesItLLC/dotfiles	infra	none	-
 GarrettMakesItLLC/.github	infra	none	-
+GarrettMakesItLLC/platform	infra	npm	-
 
-# Retained for reference, not active work. QuantaForge is NetWorthy's prior art
-# (see NetWorthy/docs/reference/quantaforge-prior-art.md); OverlandOS is
-# AdventureOS's predecessor.
-GarrettMakesItLLC/QuantaForge	archive	none	-
-GarrettMakesItLLC/OverlandOS	archive	npm	-
+# Retained for reference, not active work.
 GarrettMakesItLLC/ReptIdle	archive	none	-

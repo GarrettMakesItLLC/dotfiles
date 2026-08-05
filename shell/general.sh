@@ -26,7 +26,12 @@ repo() {
     ls -1 "$WORKSPACE"
     return 0
   fi
+  # Infra/archive repos live under Tools/ (bootstrap/repos.tsv), so a plain
+  # top-level search misses `repo ci` / `repo platform` — fall back to Tools/
+  # rather than searching the whole tree, which would also match a stray
+  # same-named directory inside a product repo's own checkout.
   match=$(find "$WORKSPACE" -maxdepth 1 -mindepth 1 -type d -iname "$name" | head -1)
+  [ -z "$match" ] && match=$(find "$WORKSPACE/Tools" -maxdepth 1 -mindepth 1 -type d -iname "$name" 2>/dev/null | head -1)
   if [ -z "$match" ]; then
     echo "no repo matching '$name' in $WORKSPACE" >&2
     return 1
