@@ -237,8 +237,13 @@ while IFS=$'\t' read -r slug role pm boot; do
   [ "$pm" = none ] && continue
 
   work "$name: installing ($pm)"
+  # The shared @gmi/* packages live on GitHub Packages, which requires auth even
+  # for a package this org owns — a bare `npm ci` 401s. Every consumer's own
+  # CLAUDE.md already documents `NODE_AUTH_TOKEN=$GITHUB_TOKEN npm ci` as the
+  # manual workaround; this is that same substitution, made automatic. A no-op
+  # for pnpm repos and for anyone who already exports NODE_AUTH_TOKEN.
   case "$pm" in
-    npm)  ( cd "$dir" && npm ci >/dev/null 2>&1 ) ;;
+    npm)  ( cd "$dir" && NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-$GH_TOKEN}" npm ci >/dev/null 2>&1 ) ;;
     pnpm) ( cd "$dir" && pnpm install --frozen-lockfile >/dev/null 2>&1 ) ;;
   esac
   # shellcheck disable=SC2181
