@@ -39,10 +39,19 @@ repo() {
   cd "$match" || return
 }
 
-# dcsync — cd to dotfiles, pull latest, re-run install (idempotent), reload the shell.
+# dcsync — pull latest dotclaude config, verify ~/.claude symlinks are healthy.
+# Check-only (bootstrap.sh --check): no npm/uv/playwright installs, so it's fast.
 dcsync() {
+  git -C "$HOME/dotclaude" pull --ff-only || return
+  bash "$HOME/dotclaude/bootstrap.sh" --check
+}
+
+# dfsync — cd to dotfiles, pull latest, re-run install (idempotent), sync
+# dotclaude too, then reload the shell. Run this at the start of new work.
+dfsync() {
   cd "$HOME/dotfiles" || return
   git pull --ff-only && ./install.sh
+  dcsync
   # shellcheck source=/dev/null
   . "$HOME/.bashrc"
 }
