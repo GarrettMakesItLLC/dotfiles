@@ -11,9 +11,13 @@ and each machine points at it.
 This is the only repo you have to clone by hand. It fetches everything else.
 
 ```bash
-git clone git@github.com:GarrettMakesItLLC/dotfiles.git ~/workspace/dotfiles
-bash ~/workspace/dotfiles/bootstrap/device.sh
+git clone git@github.com:GarrettMakesItLLC/dotfiles.git ~/dotfiles
+bash ~/dotfiles/bootstrap/device.sh
 ```
+
+`dotfiles` itself lives at `~/dotfiles`, not inside `~/workspace/` — same reasoning as `dotclaude`
+staying at `~/dotclaude`: it bootstraps the machine, so it can't live inside the tree it's the one
+creating.
 
 That installs the toolchain, wires the shell and git config, clones `dotclaude` and runs its
 `bootstrap.sh` to link `~/.claude`, clones the repo fleet, and installs each repo's dependencies.
@@ -38,7 +42,7 @@ Exit status is non-zero when something blocking is missing, so it can gate a lar
 ### Shell and git config only
 
 ```bash
-~/workspace/dotfiles/install.sh
+~/dotfiles/install.sh
 ```
 
 Appends one source line to `~/.bashrc` and an `include.path` to `~/.gitconfig`, so a `git pull` here

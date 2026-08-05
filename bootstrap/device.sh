@@ -2,8 +2,8 @@
 # Bring a fresh machine to a working state: toolchain, agent config, the repo
 # fleet, and dependencies.
 #
-#   git clone git@github.com:GarrettMakesItLLC/dotfiles.git ~/workspace/dotfiles
-#   bash ~/workspace/dotfiles/bootstrap/device.sh
+#   git clone git@github.com:GarrettMakesItLLC/dotfiles.git ~/dotfiles
+#   bash ~/dotfiles/bootstrap/device.sh
 #
 # Idempotent — re-run it any time. It never overwrites a repo that already
 # exists, and every install step is skipped when already satisfied.
