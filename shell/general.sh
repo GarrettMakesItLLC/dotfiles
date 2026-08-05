@@ -56,6 +56,18 @@ dfsync() {
   . "$HOME/.bashrc"
 }
 
+# dcbootstrap — full dotclaude install: symlinks + the npm/uv/playwright
+# builds that dcsync's --check deliberately skips. For a stale or new machine.
+dcbootstrap() {
+  bash "$HOME/dotclaude/bootstrap.sh"
+}
+
+# dfbootstrap — full machine setup: toolchain, dotfiles, dotclaude, and the
+# whole repo fleet (bootstrap/repos.tsv). For a brand-new or long-idle machine.
+dfbootstrap() {
+  bash "$HOME/dotfiles/bootstrap/device.sh" "$@"
+}
+
 # --- safety ---------------------------------------------------------------
 
 # Prompt before clobbering. These are the three that cause irreversible loss.
