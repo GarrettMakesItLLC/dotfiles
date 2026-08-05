@@ -18,6 +18,15 @@ alias ....='cd ../../..'
 export WORKSPACE="${WORKSPACE:-$HOME/workspace}"
 alias ws='cd "$WORKSPACE"'
 
+# repent — reload the current shell's config (aliases, PATH, everything).
+alias repent='. "$HOME/.bashrc"'
+
+# addAlias — open the everyday-shortcuts file (this one) to add or edit one.
+# Run `repent` after saving to pick it up in the current shell.
+addAlias() {
+  "${EDITOR:-vi}" "$HOME/dotfiles/shell/general.sh"
+}
+
 # repo <name> — cd to a repo by name, case-insensitively, so `repo networthy`
 # finds NetWorthy.
 repo() {
