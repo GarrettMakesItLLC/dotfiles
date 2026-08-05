@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Entry point. One line in ~/.bashrc sources this:
 #
-#   [ -f "$HOME/workspace/dotfiles/shell/index.sh" ] && . "$HOME/workspace/dotfiles/shell/index.sh"
+#   [ -f "$HOME/dotfiles/shell/index.sh" ] && . "$HOME/dotfiles/shell/index.sh"
 #
 # `install.sh` adds that line. Everything else is sourced from here, so adding a
 # file means adding it below rather than editing ~/.bashrc on every machine.
