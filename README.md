@@ -16,8 +16,12 @@ bash ~/workspace/dotfiles/bootstrap/device.sh
 ```
 
 That installs the toolchain, wires the shell and git config, clones `dotclaude` and runs its
-`bootstrap.sh` to link `~/.claude`, clones the repo fleet into `~/workspace`, and installs each
-repo's dependencies. Idempotent — re-run it any time; it never overwrites an existing checkout.
+`bootstrap.sh` to link `~/.claude`, clones the repo fleet, and installs each repo's dependencies.
+Idempotent — re-run it any time; it never overwrites an existing checkout.
+
+`product`-role repos (the daily-work fleet) land flat at `~/workspace/<name>`; `infra` and `archive`
+repos group under `~/workspace/Tools/<name>` so the root isn't cluttered with repos nobody opens day
+to day. `repos.tsv` is the source of truth for which is which — see its header comment.
 
 It ends by printing what it could not do, because those things are interactive or per-machine:
 secrets, MCP connector OAuth, and deployment env vars. Anything needing `sudo` is **reported, never

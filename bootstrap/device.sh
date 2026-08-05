@@ -200,10 +200,27 @@ while IFS=$'\t' read -r slug role pm boot; do
   [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && [ "$ONLY" != "$slug" ] && continue
   [ "$role" = archive ] && [ "$INCLUDE_ARCHIVES" -eq 0 ] && { skip "$name (archive)"; continue; }
 
-  dir="$WORKSPACE/$name"
+  # `product` repos are the daily-work fleet and stay flat at the workspace root;
+  # `infra`/`archive` repos group under `Tools/` so the root isn't cluttered with
+  # repos nobody opens day to day. dotfiles is the one `infra` exception: this
+  # script only runs from an already-cloned dotfiles checkout, so it has to stay
+  # flat at $WORKSPACE/dotfiles — same reasoning as dotclaude staying outside the
+  # manifest entirely, and it's where "Setup on a new machine" tells you to clone
+  # it. An `infra` repo already checked out flat otherwise (a machine bootstrapped
+  # before this split existed) is left there rather than re-cloned into Tools/ —
+  # that would silently fork the checkout in two places, which is exactly the
+  # duplication this distinction exists to avoid.
+  if [ "$role" = product ] || [ "$name" = dotfiles ]; then
+    dir="$WORKSPACE/$name"
+  else
+    dir="$WORKSPACE/Tools/$name"
+    [ -d "$WORKSPACE/$name/.git" ] && dir="$WORKSPACE/$name"
+  fi
+
   if [ -d "$dir/.git" ]; then
     ok "$name present"
   else
+    mkdir -p "$(dirname "$dir")"
     work "cloning $slug"
     git clone -q "git@github.com:$slug.git" "$dir" \
       && ok "$name cloned" || { bad "$slug clone failed"; continue; }
