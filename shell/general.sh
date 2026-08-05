@@ -39,6 +39,14 @@ repo() {
   cd "$match" || return
 }
 
+# dcsync — cd to dotfiles, pull latest, re-run install (idempotent), reload the shell.
+dcsync() {
+  cd "$HOME/dotfiles" || return
+  git pull --ff-only && ./install.sh
+  # shellcheck source=/dev/null
+  . "$HOME/.bashrc"
+}
+
 # --- safety ---------------------------------------------------------------
 
 # Prompt before clobbering. These are the three that cause irreversible loss.
