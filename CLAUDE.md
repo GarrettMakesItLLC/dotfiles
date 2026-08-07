@@ -23,7 +23,7 @@ between to catch it. Two consequences:
 bootstrap/device.sh   whole-machine setup; idempotent; reports anything needing sudo
 bootstrap/repos.tsv   the repo fleet, as data
 shell/index.sh        entry point — sources the rest, in order
-shell/{general,node,git}.sh
+shell/{general,node,git,secrets}.sh
 git/config            included into ~/.gitconfig via include.path
 install.sh            wires shell + git into the current machine
 ```
