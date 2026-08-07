@@ -33,7 +33,7 @@ installed** — a bootstrap script that silently escalates is one nobody can rea
 
 ```bash
 bash bootstrap/device.sh --no-install     # clone and link only; skip dependency installs
-bash bootstrap/device.sh --only NetWorthy # one repo
+bash bootstrap/device.sh --only <repo>    # one repo
 bash bootstrap/device.sh --all            # include archived repos
 ```
 
