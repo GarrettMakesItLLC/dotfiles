@@ -52,6 +52,15 @@ dev() { _switch_and_pull dev; }
 alias mpl=main
 alias dpl=dev
 
+# gplc/mplc/dplc: the same three, then straight into a clean claude session —
+# `dplc` at the start of a session: switch to dev, pull it current, clear the
+# scroll, launch claude. The trailing `claude` here picks up the `claude`
+# alias (clear-then-launch) defined in general.sh, which index.sh always
+# sources before this file.
+gplc() { git pull && claude; }
+mplc() { main && claude; }
+dplc() { dev && claude; }
+
 # Back to whatever branch you were on before.
 alias back='git switch -'
 

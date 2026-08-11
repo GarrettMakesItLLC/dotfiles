@@ -3,8 +3,8 @@
 # Sourced by shell/index.sh — not meant to be run directly.
 
 # Ordering is the point. `~/.bashrc` sources per-app env files directly, and
-# `~/.musclebuddy/ops.env` among them exports its own `GH_TOKEN`. That file is
-# REGENERATED from Vercel OPS_* vars by MuscleBuddy's `bin/ops-pull.sh`, so:
+# one of those app-scoped files exports its own `GH_TOKEN`. That file is
+# REGENERATED from Vercel OPS_* vars by that app's `bin/ops-pull.sh`, so:
 #
 #   - a shared token hand-added there is lost on the next pull, and
 #   - whichever file is sourced last wins.
