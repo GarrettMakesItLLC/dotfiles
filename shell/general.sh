@@ -27,8 +27,7 @@ addAlias() {
   "${EDITOR:-vi}" "$HOME/dotfiles/shell/general.sh"
 }
 
-# repo <name> — cd to a repo by name, case-insensitively, so `repo networthy`
-# finds NetWorthy.
+# repo <name> — cd to a repo by name, case-insensitively.
 repo() {
   local name="$1" match
   if [ -z "$name" ]; then

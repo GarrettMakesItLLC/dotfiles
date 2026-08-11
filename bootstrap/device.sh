@@ -118,26 +118,33 @@ if command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-# AdventureOS is the only pnpm consumer, but it cannot be installed without this.
-# corepack is not present on every machine — WSL images built from nodesource omit
-# it — so `npm i -g` is the fallback that actually works rather than the tidier one.
-if command -v pnpm >/dev/null 2>&1; then
-  ok "pnpm $(pnpm -v)"
-elif command -v corepack >/dev/null 2>&1 && corepack enable pnpm >/dev/null 2>&1; then
-  ok "pnpm enabled via corepack"
-elif command -v npm >/dev/null 2>&1; then
-  work "installing pnpm"
-  # Verify by invoking it, not by trusting the installer's exit code — the two
-  # disagree whenever the global bin is not on PATH.
-  if npm i -g pnpm >/dev/null 2>&1 && hash -r 2>/dev/null; command -v pnpm >/dev/null 2>&1; then
+# Only bother if the manifest actually has a pnpm consumer — installing a package
+# manager nothing uses is dead weight, and this fleet has flipped between npm and
+# pnpm before, so check the data instead of hardcoding a repo name here.
+if grep -qP '^[^#\t]+\t[^\t]+\tpnpm\t' "$MANIFEST" 2>/dev/null; then
+  # corepack is not present on every machine — WSL images built from nodesource
+  # omit it — so `npm i -g` is the fallback that actually works rather than the
+  # tidier one.
+  if command -v pnpm >/dev/null 2>&1; then
     ok "pnpm $(pnpm -v)"
+  elif command -v corepack >/dev/null 2>&1 && corepack enable pnpm >/dev/null 2>&1; then
+    ok "pnpm enabled via corepack"
+  elif command -v npm >/dev/null 2>&1; then
+    work "installing pnpm"
+    # Verify by invoking it, not by trusting the installer's exit code — the two
+    # disagree whenever the global bin is not on PATH.
+    if npm i -g pnpm >/dev/null 2>&1 && hash -r 2>/dev/null; command -v pnpm >/dev/null 2>&1; then
+      ok "pnpm $(pnpm -v)"
+    else
+      bad "pnpm installed but not on PATH — open a new shell, or check \`npm prefix -g\`/bin"
+      MISSING+=("pnpm on PATH (installed to $(npm prefix -g 2>/dev/null)/bin)")
+    fi
   else
-    bad "pnpm installed but not on PATH — open a new shell, or check \`npm prefix -g\`/bin"
-    MISSING+=("pnpm on PATH (installed to $(npm prefix -g 2>/dev/null)/bin)")
+    bad "pnpm — needed by a repo in the manifest"
+    MISSING+=("pnpm (npm i -g pnpm)")
   fi
 else
-  bad "pnpm — needed by AdventureOS"
-  MISSING+=("pnpm (npm i -g pnpm)")
+  skip "pnpm (no manifest consumer)"
 fi
 
 if command -v gh >/dev/null 2>&1; then
@@ -280,7 +287,7 @@ cat <<'HUMAN'
   These cannot be scripted — they are interactive or per-machine:
 
     1. Secrets. Populate ~/.config/secrets/*.env and any per-app env file
-       (e.g. ~/.musclebuddy/agent.env). See dotclaude/integrations.md.
+       (e.g. ~/.<app>/agent.env). See dotclaude/integrations.md.
     2. MCP connectors. OAuth ones (Notion, Google, Sentry) authenticate in a
        browser on first use — run `/mcp` in a Claude session.
     3. Deployment env vars. Pull per app rather than copying: `npx vercel env pull`
