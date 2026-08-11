@@ -21,6 +21,11 @@ alias ws='cd "$WORKSPACE"'
 # repent — reload the current shell's config (aliases, PATH, everything).
 alias repent='. "$HOME/.bashrc"'
 
+# claude — clear the scrollback before every launch. Safe to self-reference:
+# bash skips re-expanding an alias name within its own replacement, so the
+# second `claude` here invokes the real command, not this alias again.
+alias claude='clear && claude'
+
 # addAlias — open the everyday-shortcuts file (this one) to add or edit one.
 # Run `repent` after saving to pick it up in the current shell.
 addAlias() {
