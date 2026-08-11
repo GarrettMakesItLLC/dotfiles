@@ -20,6 +20,7 @@ alias gc='git commit'
 alias gcm='git commit -m'
 alias gco='git switch'
 alias gcb='git switch -c'
+alias gb='git branch'
 alias gf='git fetch --all --prune'
 
 # --- branch switching -----------------------------------------------------
@@ -46,6 +47,10 @@ _switch_and_pull() {
 
 main() { _switch_and_pull main; }
 dev() { _switch_and_pull dev; }
+
+# mpl/dpl: same switch-and-pull, under the names that match the gpl convention.
+alias mpl=main
+alias dpl=dev
 
 # Back to whatever branch you were on before.
 alias back='git switch -'
