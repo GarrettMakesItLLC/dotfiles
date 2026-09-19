@@ -20,7 +20,7 @@ GarrettMakesItLLC/MuscleBuddy	product	npm	npx prisma generate
 GarrettMakesItLLC/RedThreadEvents	product	npm	npx prisma generate
 GarrettMakesItLLC/AdventureOS	product	npm	npm run db:generate
 GarrettMakesItLLC/NetWorthy	product	npm	npx prisma generate
-GarrettMakesItLLC/SideQuest	product	npm	-
+GarrettMakesItLLC/SideQuest	product	npm	npm run db:generate
 GarrettMakesIt/GarrettMakesIt	product	npm	-
 
 GarrettMakesItLLC/ci	infra	none	-
