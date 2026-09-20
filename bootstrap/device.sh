@@ -224,20 +224,26 @@ while IFS=$'\t' read -r slug role pm boot; do
     [ -d "$WORKSPACE/$name/.git" ] && dir="$WORKSPACE/$name"
   fi
 
+  cloned=0
   if [ -d "$dir/.git" ]; then
     ok "$name present"
   else
     mkdir -p "$(dirname "$dir")"
     work "cloning $slug"
     git clone -q "git@github.com:$slug.git" "$dir" \
-      && ok "$name cloned" || { bad "$slug clone failed"; continue; }
+      && { ok "$name cloned"; cloned=1; } || { bad "$slug clone failed"; continue; }
   fi
 
-  # Put the checkout on the repo's default branch, current.
-  def=$(git -C "$dir" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
-  if [ -n "$def" ]; then
-    git -C "$dir" switch -q "$def" 2>/dev/null || git -C "$dir" switch -qc "$def" "origin/$def" 2>/dev/null
-    git -C "$dir" pull -q --ff-only 2>/dev/null || NOTES+=("$name: could not fast-forward $def — diverged or dirty")
+  # Put a FRESHLY CLONED checkout on its default branch. An existing one is
+  # left exactly as it is: bringing it current is the repo sweep's job, below,
+  # and it has the failure handling this loop never had — it will not switch a
+  # branch out from under a feature, pull under active worktrees whose
+  # node_modules resolve upward, or reduce a diverged history to one note.
+  if [ "$cloned" = 1 ]; then
+    def=$(git -C "$dir" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+    if [ -n "$def" ]; then
+      git -C "$dir" switch -q "$def" 2>/dev/null || git -C "$dir" switch -qc "$def" "origin/$def" 2>/dev/null
+    fi
   fi
 
   [ "$DO_INSTALL" -eq 0 ] && continue
@@ -267,7 +273,32 @@ while IFS=$'\t' read -r slug role pm boot; do
 done < "$MANIFEST"
 
 # --------------------------------------------------------------------------
-# 5. What still needs a human
+# 5. Bring existing checkouts current — delegated to dotclaude's
+#    bin/repo-sweep.sh, never a second copy of the logic. It reads each repo's
+#    default branch from its own remote, fast-forwards only, and skips with one
+#    clear line per reason (dirty, diverged, mid-feature, detached, active
+#    worktrees, unreachable remote) instead of aborting the run. The
+#    skipped-with-reason rows are the point: they are what says a machine has
+#    drifted, and why.
+# --------------------------------------------------------------------------
+say "Repo sweep"
+
+SWEEP="$HOME/dotclaude/bin/repo-sweep.sh"
+if [ ! -x "$SWEEP" ]; then
+  skip "dotclaude/bin/repo-sweep.sh not found — existing checkouts left as they are"
+  NOTES+=("repo sweep skipped: $SWEEP absent (older dotclaude checkout?)")
+else
+  # No --deps: the manifest loop above already installs for every repo it
+  # touched, on the bootstrap semantic (a fresh machine wants everything
+  # installed, moved or not). Passing it here would install twice.
+  sweep_args=()
+  [ -n "$ONLY" ] && sweep_args+=(--only "${ONLY##*/}")
+  [ "$INCLUDE_ARCHIVES" -eq 1 ] && sweep_args+=(--all)
+  WORKSPACE="$WORKSPACE" bash "$SWEEP" "${sweep_args[@]+"${sweep_args[@]}"}" 2>&1 | sed 's/^/  /'
+fi
+
+# --------------------------------------------------------------------------
+# 6. What still needs a human
 # --------------------------------------------------------------------------
 say "Summary"
 
