@@ -61,6 +61,16 @@ gplc() { git pull && claude; }
 mplc() { main && claude; }
 dplc() { dev && claude; }
 
+# dsync: bring THIS MACHINE up to date with dotclaude + dotfiles and
+# everything they now install — a separate command from dplc on purpose.
+# dplc means "this repo to dev", typed at the start of nearly every session,
+# and its whole point is speed; overloading it to also pull two unrelated
+# global repos, check config drift, and report on credentials would surprise
+# anyone reading it and add real latency to a command that's typed by
+# reflex. Safe to run from anywhere, including outside any repo — it never
+# touches the current directory's repo.
+dsync() { bash "$HOME/dotclaude/bin/dot-sync.sh" "$@"; }
+
 # Back to whatever branch you were on before.
 alias back='git switch -'
 
