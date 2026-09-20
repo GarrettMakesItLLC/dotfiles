@@ -28,7 +28,7 @@ jobs:
 
       # Ubuntu runners ship shellcheck, so there is nothing to install.
       - name: Lint
-        run: shellcheck -S warning bootstrap/device.sh install.sh shell/*.sh
+        run: shellcheck -S warning bootstrap/device.sh bootstrap/*.test.sh install.sh shell/*.sh
 
       # Syntax-only parse of every shell file, including any not named above —
       # a new file added to shell/ without updating the lint list would otherwise
@@ -45,6 +45,17 @@ jobs:
       # parser is the worst possible failure. --help touches nothing.
       - name: device.sh --help runs
         run: bash bootstrap/device.sh --help
+
+      # Globbed, not enumerated, so a new *.test.sh anywhere in the repo runs
+      # without a workflow edit.
+      - name: Run self-tests
+        run: |
+          fail=0
+          while IFS= read -r t; do
+            echo "→ $t"
+            bash "$t" || { echo "::error file=$t::self-test failed"; fail=1; }
+          done < <(git ls-files '*.test.sh')
+          exit "$fail"
 
       # The manifest is data the script trusts. A stray space instead of a tab
       # silently drops a repo from the fleet, which is invisible until someone

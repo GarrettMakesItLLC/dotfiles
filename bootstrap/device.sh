@@ -56,6 +56,37 @@ skip() { printf '  \033[90mskip\033[0m  %s\n' "$*"; }
 work() { printf '  \033[36m..\033[0m    %s\n' "$*"; }
 bad()  { printf '  \033[31mmiss\033[0m  %s\n' "$*"; }
 
+# Decide the on-disk directory for one manifest repo. Echoes the path on
+# success. When BOTH a legacy flat checkout and the Tools/ one exist, that is
+# not a legacy machine — it is a repo checked out twice and silently
+# drifting, which is exactly how it happened once already (a fallback here
+# used to prefer the flat path unconditionally, quietly). Refuse and report
+# both paths instead of guessing.
+resolve_repo_dir() {
+  local role="$1" name="$2"
+  if [ "$role" = product ] || [ "$name" = dotfiles ]; then
+    echo "$WORKSPACE/$name"
+    return 0
+  fi
+  local flat="$WORKSPACE/$name" tools="$WORKSPACE/Tools/$name"
+  if [ -d "$flat/.git" ] && [ -d "$tools/.git" ]; then
+    bad "$name exists at BOTH $flat and $tools — the convention wants $tools; retire the other one before this can proceed"
+    return 1
+  fi
+  if [ -d "$flat/.git" ]; then
+    echo "$flat"
+  else
+    echo "$tools"
+  fi
+}
+
+# Test harness hook: source this file with DEVICE_SH_TEST_SOURCE=1 to get the
+# functions above (ok/bad/resolve_repo_dir/…) without running the real
+# toolchain install, repo clones or dependency setup below.
+if [ "${DEVICE_SH_TEST_SOURCE:-0}" = 1 ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 # --------------------------------------------------------------------------
 # 1. Toolchain
 # --------------------------------------------------------------------------
@@ -217,12 +248,7 @@ while IFS=$'\t' read -r slug role pm boot; do
   # before this split existed) is left there rather than re-cloned into Tools/ —
   # that would silently fork the checkout in two places, which is exactly the
   # duplication this distinction exists to avoid.
-  if [ "$role" = product ] || [ "$name" = dotfiles ]; then
-    dir="$WORKSPACE/$name"
-  else
-    dir="$WORKSPACE/Tools/$name"
-    [ -d "$WORKSPACE/$name/.git" ] && dir="$WORKSPACE/$name"
-  fi
+  dir="$(resolve_repo_dir "$role" "$name")" || continue
 
   if [ -d "$dir/.git" ]; then
     ok "$name present"
