@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Autonomy: gated.** Carry work to a PR ready to merge, then stop.
+**Autonomy: autonomous-merge.** Merge to `main` on green CI (shellcheck is the gate). Force-push to `main` is off-limits.
 
 Shell, git, and machine-bootstrap config, shared across machines. Sibling to `dotclaude`, which does
 the same for the agent surface — a change to how Claude works does not belong here, and a shell alias

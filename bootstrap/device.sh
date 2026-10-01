@@ -92,7 +92,7 @@ fi
 # --------------------------------------------------------------------------
 say "Toolchain"
 
-for cmd in git curl; do
+for cmd in git curl jq; do
   if command -v "$cmd" >/dev/null 2>&1; then
     ok "$cmd"
   else
