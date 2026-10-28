@@ -47,6 +47,7 @@ USAGE
   shift
 done
 
+START_TS=$SECONDS
 MISSING=()   # needs a human
 NOTES=()     # done, but worth reading
 
@@ -70,7 +71,8 @@ resolve_repo_dir() {
   fi
   local flat="$WORKSPACE/$name" tools="$WORKSPACE/Tools/$name"
   if [ -d "$flat/.git" ] && [ -d "$tools/.git" ]; then
-    bad "$name exists at BOTH $flat and $tools — the convention wants $tools; retire the other one before this can proceed"
+    # stderr: callers capture stdout as the path, so a message there is swallowed.
+    bad "$name exists at BOTH $flat and $tools — the convention wants $tools; retire the other one before this can proceed" >&2
     return 1
   fi
   if [ -d "$flat/.git" ]; then
@@ -229,6 +231,24 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
+# Warm every existing checkout's remote refs in parallel before anything walks
+# the fleet one repo at a time. Fetch only updates remote-tracking refs, so it is
+# safe under any checkout state; the repo sweep's own fetches then find nothing
+# left to transfer and the serial pass is local-only.
+prefetch_fleet() {
+  local slug role pm boot name dir
+  while IFS=$'\t' read -r slug role pm boot; do
+    case "${slug:-}" in ''|\#*) continue ;; esac
+    name="${slug##*/}"
+    [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && [ "$ONLY" != "$slug" ] && continue
+    [ "$role" = archive ] && [ "$INCLUDE_ARCHIVES" -eq 0 ] && continue
+    dir="$(resolve_repo_dir "$role" "$name" 2>/dev/null)" || continue
+    [ -d "$dir/.git" ] && printf '%s\0' "$dir"
+  done < "$MANIFEST" \
+    | xargs -0 -r -n1 -P 8 sh -c 'git -C "$1" fetch -q --prune origin >/dev/null 2>&1 || true' _
+}
+prefetch_fleet
+
 # Field-split on tabs; skip comments and blanks.
 while IFS=$'\t' read -r slug role pm boot; do
   case "${slug:-}" in ''|\#*) continue ;; esac
@@ -275,24 +295,51 @@ while IFS=$'\t' read -r slug role pm boot; do
   [ "$DO_INSTALL" -eq 0 ] && continue
   [ "$pm" = none ] && continue
 
+  # A stamp of everything the install and bootstrap command depend on. When it
+  # matches, node_modules is already what `npm ci` would produce, so re-running
+  # is pure wall-clock. Lockfile + node major + prisma schema + the bootstrap
+  # command itself; any one changing invalidates it.
+  lock="$dir/package-lock.json"; [ "$pm" = pnpm ] && lock="$dir/pnpm-lock.yaml"
+  stamp="$dir/node_modules/.device-stamp"
+  # Every *.prisma the repo tracks, not one hardcoded path — schemas live in
+  # different places per repo, and the bootstrap command regenerates from them.
+  want="$( { cat "$lock" 2>/dev/null; git -C "$dir" ls-files -z '*.prisma' 2>/dev/null | xargs -0 -r -I{} cat "$dir/{}"; } | cksum)|node$NODE_MAJOR|$boot"
+  if [ -f "$lock" ] && [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ]; then
+    ok "$name: dependencies current"
+    continue
+  fi
+
+  # `npm ci` deletes node_modules first. Sibling worktrees resolve it upward from
+  # here, so with any linked worktree live that would pull the floor out from
+  # under them — the same refusal the repo sweep makes for a pull.
+  if [ "$(git -C "$dir" worktree list --porcelain 2>/dev/null | grep -c '^worktree ')" -gt 1 ]; then
+    skip "$name: linked worktrees active — install left alone"
+    NOTES+=("$name: install skipped, linked worktrees depend on its node_modules; run it when they are gone")
+    continue
+  fi
+
   work "$name: installing ($pm)"
   # The shared @gmi/* packages live on GitHub Packages, which requires auth even
   # for a package this org owns — a bare `npm ci` 401s. Every consumer's own
   # CLAUDE.md already documents `NODE_AUTH_TOKEN=$GITHUB_TOKEN npm ci` as the
   # manual workaround; this is that same substitution, made automatic. A no-op
   # for pnpm repos and for anyone who already exports NODE_AUTH_TOKEN.
+  # --prefer-offline serves tarballs from the shared npm cache instead of
+  # revalidating each one against the registry.
   case "$pm" in
-    npm)  ( cd "$dir" && NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-$GH_TOKEN}" npm ci >/dev/null 2>&1 ) ;;
-    pnpm) ( cd "$dir" && pnpm install --frozen-lockfile >/dev/null 2>&1 ) ;;
+    npm)  ( cd "$dir" && NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN:-$GH_TOKEN}" npm ci --prefer-offline --no-audit --no-fund >/dev/null 2>&1 ) ;;
+    pnpm) ( cd "$dir" && pnpm install --frozen-lockfile --prefer-offline >/dev/null 2>&1 ) ;;
   esac
   # shellcheck disable=SC2181
   if [ $? -eq 0 ]; then
     ok "$name: dependencies installed"
+    booted=1
     if [ "$boot" != "-" ] && [ -n "$boot" ]; then
       ( cd "$dir" && eval "$boot" >/dev/null 2>&1 ) \
         && ok "$name: $boot" \
-        || NOTES+=("$name: '$boot' failed — usually needs env vars, see its CLAUDE.md")
+        || { booted=0; NOTES+=("$name: '$boot' failed — usually needs env vars, see its CLAUDE.md"); }
     fi
+    [ "$booted" = 1 ] && printf '%s' "$want" > "$stamp"
   else
     NOTES+=("$name: dependency install failed — run it by hand to see why")
   fi
@@ -327,6 +374,7 @@ fi
 # 6. What still needs a human
 # --------------------------------------------------------------------------
 say "Summary"
+printf '  done in %ss\n\n' "$((SECONDS - START_TS))"
 
 if [ ${#NOTES[@]} -gt 0 ]; then
   echo "  Worth reading:"

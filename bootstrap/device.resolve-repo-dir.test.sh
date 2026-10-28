@@ -38,9 +38,10 @@ out="$(resolve_repo_dir infra toolsonly)"
   || failed "Tools/ only -> Tools/ (got: $out)"
 
 # 4. BOTH exist — refuse loudly, naming both paths, rather than silently
-#    preferring the flat one.
+#    preferring the flat one. The message goes to stderr: callers capture stdout
+#    as the path, so a message there would never reach the screen.
 mkdir -p "$WORKSPACE/both/.git" "$WORKSPACE/Tools/both/.git"
-out="$(resolve_repo_dir infra both)"
+out="$(resolve_repo_dir infra both 2>&1 >/dev/null)"
 rc=$?
 if [ "$rc" -ne 0 ] \
   && case "$out" in *"$WORKSPACE/both"*"$WORKSPACE/Tools/both"*) true ;; *) false ;; esac; then
