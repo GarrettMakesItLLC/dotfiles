@@ -71,7 +71,8 @@ resolve_repo_dir() {
   fi
   local flat="$WORKSPACE/$name" tools="$WORKSPACE/Tools/$name"
   if [ -d "$flat/.git" ] && [ -d "$tools/.git" ]; then
-    bad "$name exists at BOTH $flat and $tools — the convention wants $tools; retire the other one before this can proceed"
+    # stderr: callers capture stdout as the path, so a message there is swallowed.
+    bad "$name exists at BOTH $flat and $tools — the convention wants $tools; retire the other one before this can proceed" >&2
     return 1
   fi
   if [ -d "$flat/.git" ]; then
@@ -300,9 +301,20 @@ while IFS=$'\t' read -r slug role pm boot; do
   # command itself; any one changing invalidates it.
   lock="$dir/package-lock.json"; [ "$pm" = pnpm ] && lock="$dir/pnpm-lock.yaml"
   stamp="$dir/node_modules/.device-stamp"
-  want="$(cat "$lock" "$dir/prisma/schema.prisma" 2>/dev/null | cksum)|node$NODE_MAJOR|$boot"
+  # Every *.prisma the repo tracks, not one hardcoded path — schemas live in
+  # different places per repo, and the bootstrap command regenerates from them.
+  want="$( { cat "$lock" 2>/dev/null; git -C "$dir" ls-files -z '*.prisma' 2>/dev/null | xargs -0 -r -I{} cat "$dir/{}"; } | cksum)|node$NODE_MAJOR|$boot"
   if [ -f "$lock" ] && [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ]; then
     ok "$name: dependencies current"
+    continue
+  fi
+
+  # `npm ci` deletes node_modules first. Sibling worktrees resolve it upward from
+  # here, so with any linked worktree live that would pull the floor out from
+  # under them — the same refusal the repo sweep makes for a pull.
+  if [ "$(git -C "$dir" worktree list --porcelain 2>/dev/null | grep -c '^worktree ')" -gt 1 ]; then
+    skip "$name: linked worktrees active — install left alone"
+    NOTES+=("$name: install skipped, linked worktrees depend on its node_modules; run it when they are gone")
     continue
   fi
 
