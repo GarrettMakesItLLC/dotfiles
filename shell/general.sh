@@ -81,6 +81,12 @@ dfbootstrap() {
   bash "$HOME/dotfiles/bootstrap/device.sh" "$@"
 }
 
+# dfAll — pull dotfiles + dotclaude, then run the full machine bootstrap
+# (which runs dotclaude's full bootstrap.sh). One command to bring a machine current.
+dfAll() {
+  dfsync && dfbootstrap "$@"
+}
+
 # --- safety ---------------------------------------------------------------
 
 # Prompt before clobbering. These are the three that cause irreversible loss.
