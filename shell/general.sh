@@ -52,19 +52,67 @@ repo() {
   cd "$match" || return
 }
 
-# dcsync — pull latest dotclaude config, verify ~/.claude symlinks are healthy.
-# Check-only (bootstrap.sh --check): no npm/uv/playwright installs, so it's fast.
+# _sync_repo <dir> <branch> — put <dir> on <branch> and fast-forward it. The
+# sync commands default to main so a checkout left on a feature branch doesn't
+# silently "sync" that branch instead; a branch is named explicitly with -b.
+# A dirty tree that blocks the switch fails loudly rather than being touched.
+_sync_repo() {
+  local dir="$1" branch="$2" cur
+  cur=$(git -C "$dir" branch --show-current)
+  if [ "$cur" != "$branch" ]; then
+    echo "$(basename "$dir"): switching $cur -> $branch"
+    git -C "$dir" switch "$branch" || return
+  fi
+  # A local-only branch has nothing to pull; that is not a failure.
+  git -C "$dir" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1 || return 0
+  git -C "$dir" pull --ff-only
+}
+
+# _sync_branch_arg — parse `-b|--branch <name>` out of the args, leaving the rest
+# in SYNC_REST. Sets SYNC_BRANCH (default main). Shared by dcsync/dfsync/dfAll.
+_sync_branch_arg() {
+  SYNC_BRANCH=main
+  SYNC_REST=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -b | --branch)
+        if [ -z "${2:-}" ]; then
+          echo "$1 needs a branch name" >&2
+          return 1
+        fi
+        SYNC_BRANCH="$2"
+        shift 2
+        ;;
+      --branch=*)
+        SYNC_BRANCH="${1#--branch=}"
+        shift
+        ;;
+      *)
+        SYNC_REST+=("$1")
+        shift
+        ;;
+    esac
+  done
+}
+
+# dcsync [-b <branch>] — switch dotclaude to main (or <branch>), pull latest,
+# verify ~/.claude symlinks are healthy. Check-only (bootstrap.sh --check): no
+# npm/uv/playwright installs, so it's fast.
 dcsync() {
-  git -C "$HOME/dotclaude" pull --ff-only || return
+  _sync_branch_arg "$@" || return
+  _sync_repo "$HOME/dotclaude" "$SYNC_BRANCH" || return
   bash "$HOME/dotclaude/bootstrap.sh" --check
 }
 
-# dfsync — cd to dotfiles, pull latest, re-run install (idempotent), sync
-# dotclaude too, then reload the shell. Run this at the start of new work.
+# dfsync [-b <branch>] — cd to dotfiles, switch to main (or <branch>), pull
+# latest, re-run install (idempotent), sync dotclaude on the same branch, then
+# reload the shell. Run this at the start of new work.
 dfsync() {
+  _sync_branch_arg "$@" || return
+  local branch="$SYNC_BRANCH"
   cd "$HOME/dotfiles" || return
-  git pull --ff-only && ./install.sh
-  dcsync
+  _sync_repo "$HOME/dotfiles" "$branch" && ./install.sh || return
+  dcsync -b "$branch" || return
   # shellcheck source=/dev/null
   . "$HOME/.bashrc"
 }
@@ -81,10 +129,13 @@ dfbootstrap() {
   bash "$HOME/dotfiles/bootstrap/device.sh" "$@"
 }
 
-# dfAll — pull dotfiles + dotclaude, then run the full machine bootstrap
-# (which runs dotclaude's full bootstrap.sh). One command to bring a machine current.
+# dfAll [-b <branch>] [device.sh args] — pull dotfiles + dotclaude (main unless
+# -b), then run the full machine bootstrap (which runs dotclaude's full
+# bootstrap.sh). One command to bring a machine current.
 dfAll() {
-  dfsync && dfbootstrap "$@"
+  _sync_branch_arg "$@" || return
+  local branch="$SYNC_BRANCH" rest=("${SYNC_REST[@]}")
+  dfsync -b "$branch" && dfbootstrap "${rest[@]}"
 }
 
 # --- safety ---------------------------------------------------------------
